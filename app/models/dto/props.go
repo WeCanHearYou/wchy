@@ -25,3 +25,10 @@ func (p Props) Merge(props Props) Props {
 	}
 	return new
 }
+
+// Append add the given props to current props
+func (p Props) Append(props Props) {
+	for k, v := range props {
+		p[k] = v
+	}
+}

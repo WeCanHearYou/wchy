@@ -1,0 +1,9 @@
+@import "~@fider/assets/styles/variables.scss";
+
+.c-webhook-failinfo {
+  pre {
+    text-align: left;
+    white-space: pre-wrap;
+    font-size: get("font.size.sm");
+  }
+}

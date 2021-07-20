@@ -27,6 +27,7 @@ import (
 	_ "github.com/getfider/fider/app/services/log/sql"
 	_ "github.com/getfider/fider/app/services/oauth"
 	_ "github.com/getfider/fider/app/services/sqlstore/postgres"
+	_ "github.com/getfider/fider/app/services/webhook"
 )
 
 //RunServer starts the Fider Server

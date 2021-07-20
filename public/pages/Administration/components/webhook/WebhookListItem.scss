@@ -1,0 +1,19 @@
+@import "~@fider/assets/styles/variables.scss";
+
+.c-webhook-listitem {
+  &__icon {
+    vertical-align: middle;
+
+    &--enabled {
+      color: get("colors.green.500");
+    }
+
+    &--disabled {
+      color: get("colors.yellow.500");
+    }
+
+    &--failed {
+      color: get("colors.red.500");
+    }
+  }
+}

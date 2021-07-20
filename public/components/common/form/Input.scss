@@ -17,7 +17,6 @@
   & + svg,
   & + img {
     position: absolute;
-    position: absolute;
     width: 36px;
     padding: spacing(2);
     margin: 0;
@@ -44,9 +43,13 @@
   &--suffixed {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    & + * {
+    & ~ * {
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
+      &:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
     }
   }
 }

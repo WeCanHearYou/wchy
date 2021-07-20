@@ -23,6 +23,7 @@ const defaultRoutes = [
   route("/admin/invitations", Pages.AsyncInvitationsPage),
   route("/admin/authentication", Pages.AsyncManageAuthenticationPage),
   route("/admin/advanced", Pages.AsyncAdvancedSettingsPage),
+  route("/admin/webhooks", Pages.AsyncManageWebhooksPage),
   route("/admin", Pages.AsyncGeneralSettingsPage),
   route("/terms", Pages.AsyncLegalPage, false),
   route("/privacy", Pages.AsyncLegalPage, false),

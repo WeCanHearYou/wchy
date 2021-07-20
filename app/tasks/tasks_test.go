@@ -2,6 +2,7 @@ package tasks_test
 
 import (
 	"context"
+	"github.com/getfider/fider/app/services/webhook"
 	"html/template"
 	"testing"
 	"time"
@@ -135,6 +136,12 @@ func TestNotifyAboutNewPostTask(t *testing.T) {
 		return nil
 	})
 
+	var triggerWebhooksByType *cmd.TriggerWebhooksByType
+	bus.AddHandler(func(ctx context.Context, c *cmd.TriggerWebhooksByType) error {
+		triggerWebhooksByType = c
+		return nil
+	})
+
 	worker := mock.NewWorker()
 	post := &entity.Post{
 		ID:          1,
@@ -178,6 +185,27 @@ func TestNotifyAboutNewPostTask(t *testing.T) {
 	Expect(addNewNotification.Link).Equals("/posts/1/add-support-for-typescript")
 	Expect(addNewNotification.Title).Equals("New post: **Add support for TypeScript**")
 	Expect(addNewNotification.User).Equals(mock.AryaStark)
+
+	Expect(triggerWebhooksByType).IsNotNil()
+	Expect(triggerWebhooksByType.Type).Equals(enum.WebhookNewPost)
+	role, _ := mock.JonSnow.Role.MarshalText()
+	Expect(triggerWebhooksByType.Props).ContainsProps(dto.Props{
+		"post_id":          post.ID,
+		"post_number":      post.Number,
+		"post_title":       post.Title,
+		"post_slug":        post.Slug,
+		"post_description": post.Description,
+		"post_url":         "http://domain.com/posts/1/add-support-for-typescript",
+		"author_id":        mock.JonSnow.ID,
+		"author_name":      mock.JonSnow.Name,
+		"author_email":     mock.JonSnow.Email,
+		"author_role":      string(role),
+		"tenant_id":        mock.DemoTenant.ID,
+		"tenant_name":      mock.DemoTenant.Name,
+		"tenant_subdomain": mock.DemoTenant.Subdomain,
+		"tenant_status":    webhook.TenantStatus(mock.DemoTenant.Status),
+		"tenant_url":       "http://domain.com",
+	})
 }
 
 func TestNotifyAboutNewCommentTask(t *testing.T) {
@@ -197,6 +225,12 @@ func TestNotifyAboutNewCommentTask(t *testing.T) {
 		return nil
 	})
 
+	var triggerWebhooksByType *cmd.TriggerWebhooksByType
+	bus.AddHandler(func(ctx context.Context, c *cmd.TriggerWebhooksByType) error {
+		triggerWebhooksByType = c
+		return nil
+	})
+
 	worker := mock.NewWorker()
 	post := &entity.Post{
 		ID:          1,
@@ -204,6 +238,7 @@ func TestNotifyAboutNewCommentTask(t *testing.T) {
 		Title:       "Add support for TypeScript",
 		Slug:        "add-support-for-typescript",
 		Description: "TypeScript is great, please add support for it",
+		User:        mock.JonSnow,
 	}
 	task := tasks.NotifyAboutNewComment(post, "I agree")
 
@@ -241,6 +276,33 @@ func TestNotifyAboutNewCommentTask(t *testing.T) {
 	Expect(addNewNotification.Link).Equals("/posts/1/add-support-for-typescript")
 	Expect(addNewNotification.Title).Equals("**Arya Stark** left a comment on **Add support for TypeScript**")
 	Expect(addNewNotification.User).Equals(mock.JonSnow)
+
+	Expect(triggerWebhooksByType).IsNotNil()
+	Expect(triggerWebhooksByType.Type).Equals(enum.WebhookNewComment)
+	roleArya, _ := mock.AryaStark.Role.MarshalText()
+	roleJon, _ := mock.JonSnow.Role.MarshalText()
+	Expect(triggerWebhooksByType.Props).ContainsProps(dto.Props{
+		"comment":           "I agree",
+		"post_id":           post.ID,
+		"post_number":       post.Number,
+		"post_title":        post.Title,
+		"post_slug":         post.Slug,
+		"post_description":  post.Description,
+		"post_url":          "http://domain.com/posts/1/add-support-for-typescript",
+		"post_author_id":    mock.JonSnow.ID,
+		"post_author_name":  mock.JonSnow.Name,
+		"post_author_email": mock.JonSnow.Email,
+		"post_author_role":  string(roleJon),
+		"author_id":         mock.AryaStark.ID,
+		"author_name":       mock.AryaStark.Name,
+		"author_email":      mock.AryaStark.Email,
+		"author_role":       string(roleArya),
+		"tenant_id":         mock.DemoTenant.ID,
+		"tenant_name":       mock.DemoTenant.Name,
+		"tenant_subdomain":  mock.DemoTenant.Subdomain,
+		"tenant_status":     webhook.TenantStatus(mock.DemoTenant.Status),
+		"tenant_url":        "http://domain.com",
+	})
 }
 
 func TestNotifyAboutStatusChangeTask(t *testing.T) {
@@ -260,6 +322,12 @@ func TestNotifyAboutStatusChangeTask(t *testing.T) {
 		return nil
 	})
 
+	var triggerWebhooksByType *cmd.TriggerWebhooksByType
+	bus.AddHandler(func(ctx context.Context, c *cmd.TriggerWebhooksByType) error {
+		triggerWebhooksByType = c
+		return nil
+	})
+
 	worker := mock.NewWorker()
 	post := &entity.Post{
 		ID:          1,
@@ -267,6 +335,7 @@ func TestNotifyAboutStatusChangeTask(t *testing.T) {
 		Title:       "Add support for TypeScript",
 		Slug:        "add-support-for-typescript",
 		Description: "TypeScript is great, please add support for it",
+		User:        mock.AryaStark,
 		Status:      enum.PostPlanned,
 		Response: &entity.PostResponse{
 			RespondedAt: time.Now(),
@@ -312,6 +381,41 @@ func TestNotifyAboutStatusChangeTask(t *testing.T) {
 	Expect(addNewNotification.Link).Equals("/posts/1/add-support-for-typescript")
 	Expect(addNewNotification.Title).Equals("**Jon Snow** changed status of **Add support for TypeScript** to **planned**")
 	Expect(addNewNotification.User).Equals(mock.AryaStark)
+
+	Expect(triggerWebhooksByType).IsNotNil()
+	Expect(triggerWebhooksByType.Type).Equals(enum.WebhookChangeStatus)
+	roleJon, _ := mock.JonSnow.Role.MarshalText()
+	roleArya, _ := mock.AryaStark.Role.MarshalText()
+	Expect(triggerWebhooksByType.Props).ContainsProps(dto.Props{
+		"post_old_status":            enum.PostOpen,
+		"post_id":                    post.ID,
+		"post_number":                post.Number,
+		"post_title":                 post.Title,
+		"post_slug":                  post.Slug,
+		"post_description":           post.Description,
+		"post_status":                post.Status.Name(),
+		"post_url":                   "http://domain.com/posts/1/add-support-for-typescript",
+		"post_author_id":             mock.AryaStark.ID,
+		"post_author_name":           mock.AryaStark.Name,
+		"post_author_email":          mock.AryaStark.Email,
+		"post_author_role":           string(roleArya),
+		"post_response":              true,
+		"post_response_text":         post.Response.Text,
+		"post_response_responded_at": post.Response.RespondedAt,
+		"post_response_author_id":    mock.JonSnow.ID,
+		"post_response_author_name":  mock.JonSnow.Name,
+		"post_response_author_email": mock.JonSnow.Email,
+		"post_response_author_role":  string(roleJon),
+		"author_id":                  mock.JonSnow.ID,
+		"author_name":                mock.JonSnow.Name,
+		"author_email":               mock.JonSnow.Email,
+		"author_role":                string(roleJon),
+		"tenant_id":                  mock.DemoTenant.ID,
+		"tenant_name":                mock.DemoTenant.Name,
+		"tenant_subdomain":           mock.DemoTenant.Subdomain,
+		"tenant_status":              webhook.TenantStatus(mock.DemoTenant.Status),
+		"tenant_url":                 "http://domain.com",
+	})
 }
 
 func TestNotifyAboutDeletePostTask(t *testing.T) {
@@ -331,6 +435,12 @@ func TestNotifyAboutDeletePostTask(t *testing.T) {
 		return nil
 	})
 
+	var triggerWebhooksByType *cmd.TriggerWebhooksByType
+	bus.AddHandler(func(ctx context.Context, c *cmd.TriggerWebhooksByType) error {
+		triggerWebhooksByType = c
+		return nil
+	})
+
 	worker := mock.NewWorker()
 	post := &entity.Post{
 		ID:          1,
@@ -338,6 +448,7 @@ func TestNotifyAboutDeletePostTask(t *testing.T) {
 		Title:       "Add support for TypeScript",
 		Slug:        "add-support-for-typescript",
 		Description: "TypeScript is great, please add support for it",
+		User:        mock.AryaStark,
 		Status:      enum.PostDeleted,
 		Response: &entity.PostResponse{
 			RespondedAt: time.Now(),
@@ -378,6 +489,40 @@ func TestNotifyAboutDeletePostTask(t *testing.T) {
 	Expect(addNewNotification.Link).Equals("")
 	Expect(addNewNotification.Title).Equals("**Jon Snow** deleted **Add support for TypeScript**")
 	Expect(addNewNotification.User).Equals(mock.AryaStark)
+
+	Expect(triggerWebhooksByType).IsNotNil()
+	Expect(triggerWebhooksByType.Type).Equals(enum.WebhookDeletePost)
+	roleJon, _ := mock.JonSnow.Role.MarshalText()
+	roleArya, _ := mock.AryaStark.Role.MarshalText()
+	Expect(triggerWebhooksByType.Props).ContainsProps(dto.Props{
+		"post_id":                    post.ID,
+		"post_number":                post.Number,
+		"post_title":                 post.Title,
+		"post_slug":                  post.Slug,
+		"post_description":           post.Description,
+		"post_status":                post.Status.Name(),
+		"post_url":                   "http://domain.com/posts/1/add-support-for-typescript",
+		"post_author_id":             mock.AryaStark.ID,
+		"post_author_name":           mock.AryaStark.Name,
+		"post_author_email":          mock.AryaStark.Email,
+		"post_author_role":           string(roleArya),
+		"post_response":              true,
+		"post_response_text":         post.Response.Text,
+		"post_response_responded_at": post.Response.RespondedAt,
+		"post_response_author_id":    mock.JonSnow.ID,
+		"post_response_author_name":  mock.JonSnow.Name,
+		"post_response_author_email": mock.JonSnow.Email,
+		"post_response_author_role":  string(roleJon),
+		"author_id":                  mock.JonSnow.ID,
+		"author_name":                mock.JonSnow.Name,
+		"author_email":               mock.JonSnow.Email,
+		"author_role":                string(roleJon),
+		"tenant_id":                  mock.DemoTenant.ID,
+		"tenant_name":                mock.DemoTenant.Name,
+		"tenant_subdomain":           mock.DemoTenant.Subdomain,
+		"tenant_status":              webhook.TenantStatus(mock.DemoTenant.Status),
+		"tenant_url":                 "http://domain.com",
+	})
 }
 
 func TestNotifyAboutStatusChangeTask_Duplicate(t *testing.T) {
@@ -397,12 +542,19 @@ func TestNotifyAboutStatusChangeTask_Duplicate(t *testing.T) {
 		return nil
 	})
 
+	var triggerWebhooksByType *cmd.TriggerWebhooksByType
+	bus.AddHandler(func(ctx context.Context, c *cmd.TriggerWebhooksByType) error {
+		triggerWebhooksByType = c
+		return nil
+	})
+
 	worker := mock.NewWorker()
 	post := &entity.Post{
 		ID:     2,
 		Number: 2,
 		Title:  "I need TypeScript",
 		Slug:   "i-need-typescript",
+		User:   mock.AryaStark,
 		Status: enum.PostDuplicate,
 		Response: &entity.PostResponse{
 			RespondedAt: time.Now(),
@@ -453,6 +605,46 @@ func TestNotifyAboutStatusChangeTask_Duplicate(t *testing.T) {
 	Expect(addNewNotification.Link).Equals("/posts/2/i-need-typescript")
 	Expect(addNewNotification.Title).Equals("**Jon Snow** changed status of **I need TypeScript** to **duplicate**")
 	Expect(addNewNotification.User).Equals(mock.AryaStark)
+
+	Expect(triggerWebhooksByType).IsNotNil()
+	Expect(triggerWebhooksByType.Type).Equals(enum.WebhookChangeStatus)
+	roleJon, _ := mock.JonSnow.Role.MarshalText()
+	roleArya, _ := mock.AryaStark.Role.MarshalText()
+	Expect(triggerWebhooksByType.Props).ContainsProps(dto.Props{
+		"post_old_status":               enum.PostOpen,
+		"post_id":                       post.ID,
+		"post_number":                   post.Number,
+		"post_title":                    post.Title,
+		"post_slug":                     post.Slug,
+		"post_description":              post.Description,
+		"post_status":                   post.Status.Name(),
+		"post_url":                      "http://domain.com/posts/2/i-need-typescript",
+		"post_author_id":                mock.AryaStark.ID,
+		"post_author_name":              mock.AryaStark.Name,
+		"post_author_email":             mock.AryaStark.Email,
+		"post_author_role":              string(roleArya),
+		"post_response":                 true,
+		"post_response_text":            post.Response.Text,
+		"post_response_responded_at":    post.Response.RespondedAt,
+		"post_response_author_id":       mock.JonSnow.ID,
+		"post_response_author_name":     mock.JonSnow.Name,
+		"post_response_author_email":    mock.JonSnow.Email,
+		"post_response_author_role":     string(roleJon),
+		"post_response_original_number": post.Response.Original.Number,
+		"post_response_original_title":  post.Response.Original.Title,
+		"post_response_original_slug":   post.Response.Original.Slug,
+		"post_response_original_status": post.Response.Original.Status.Name(),
+		"post_response_original_url":    "http://domain.com/posts/1/add-support-for-typescript",
+		"author_id":                     mock.JonSnow.ID,
+		"author_name":                   mock.JonSnow.Name,
+		"author_email":                  mock.JonSnow.Email,
+		"author_role":                   string(roleJon),
+		"tenant_id":                     mock.DemoTenant.ID,
+		"tenant_name":                   mock.DemoTenant.Name,
+		"tenant_subdomain":              mock.DemoTenant.Subdomain,
+		"tenant_status":                 webhook.TenantStatus(mock.DemoTenant.Status),
+		"tenant_url":                    "http://domain.com",
+	})
 }
 
 func TestSendInvites(t *testing.T) {

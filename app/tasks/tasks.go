@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"github.com/getfider/fider/app/services/webhook"
 	"strings"
 	"time"
 
@@ -111,10 +112,11 @@ func NotifyAboutNewPost(post *entity.Post) worker.Task {
 			return c.Failure(err)
 		}
 
+		author := c.User()
 		title := fmt.Sprintf("New post: **%s**", post.Title)
 		link := fmt.Sprintf("/posts/%d/%s", post.Number, post.Slug)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				err = bus.Dispatch(c, &cmd.AddNewNotification{
 					User:   user,
 					Title:  title,
@@ -135,28 +137,44 @@ func NotifyAboutNewPost(post *entity.Post) worker.Task {
 
 		to := make([]dto.Recipient, 0)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				to = append(to, dto.NewRecipient(user.Name, user.Email, dto.Props{}))
 			}
 		}
 
-		props := dto.Props{
+		tenant := c.Tenant()
+		baseURL, logoURL := web.BaseURL(c), web.LogoURL(c)
+
+		mailProps := dto.Props{
 			"title":    post.Title,
-			"siteName": c.Tenant().Name,
-			"userName": c.User().Name,
+			"siteName": tenant.Name,
+			"userName": author.Name,
 			"content":  markdown.Full(post.Description),
-			"postLink": linkWithText(fmt.Sprintf("#%d", post.Number), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"view":     linkWithText(i18n.T(c, "email.subscription.view"), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"change":   linkWithText(i18n.T(c, "email.subscription.change"), web.BaseURL(c), "/settings"),
-			"logo":     web.LogoURL(c),
+			"postLink": linkWithText(fmt.Sprintf("#%d", post.Number), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"view":     linkWithText(i18n.T(c, "email.subscription.view"), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"change":   linkWithText(i18n.T(c, "email.subscription.change"), baseURL, "/settings"),
+			"logo":     logoURL,
 		}
 
 		bus.Publish(c, &cmd.SendMail{
-			From:         c.User().Name,
+			From:         author.Name,
 			To:           to,
 			TemplateName: "new_post",
-			Props:        props,
+			Props:        mailProps,
 		})
+
+		webhookProps := dto.Props{}
+		webhook.DescribePost(webhookProps, post, "post", baseURL, false, false)
+		webhook.DescribeUser(webhookProps, author, "author")
+		webhook.DescribeTenant(webhookProps, tenant, "tenant", baseURL, logoURL)
+
+		err = bus.Dispatch(c, &cmd.TriggerWebhooksByType{
+			Type:  enum.WebhookNewPost,
+			Props: webhookProps,
+		})
+		if err != nil {
+			return c.Failure(err)
+		}
 
 		return nil
 	})
@@ -171,10 +189,11 @@ func NotifyAboutNewComment(post *entity.Post, comment string) worker.Task {
 			return c.Failure(err)
 		}
 
-		title := fmt.Sprintf("**%s** left a comment on **%s**", c.User().Name, post.Title)
+		author := c.User()
+		title := fmt.Sprintf("**%s** left a comment on **%s**", author.Name, post.Title)
 		link := fmt.Sprintf("/posts/%d/%s", post.Number, post.Slug)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				err = bus.Dispatch(c, &cmd.AddNewNotification{
 					User:   user,
 					Title:  title,
@@ -195,29 +214,45 @@ func NotifyAboutNewComment(post *entity.Post, comment string) worker.Task {
 
 		to := make([]dto.Recipient, 0)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				to = append(to, dto.NewRecipient(user.Name, user.Email, dto.Props{}))
 			}
 		}
 
-		props := dto.Props{
+		tenant := c.Tenant()
+		baseURL, logoURL := web.BaseURL(c), web.LogoURL(c)
+
+		mailProps := dto.Props{
 			"title":       post.Title,
-			"siteName":    c.Tenant().Name,
-			"userName":    c.User().Name,
+			"siteName":    tenant.Name,
+			"userName":    author.Name,
 			"content":     markdown.Full(comment),
-			"postLink":    linkWithText(fmt.Sprintf("#%d", post.Number), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"view":        linkWithText(i18n.T(c, "email.subscription.view"), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"unsubscribe": linkWithText(i18n.T(c, "email.subscription.unsubscribe"), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"change":      linkWithText(i18n.T(c, "email.subscription.change"), web.BaseURL(c), "/settings"),
-			"logo":        web.LogoURL(c),
+			"postLink":    linkWithText(fmt.Sprintf("#%d", post.Number), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"view":        linkWithText(i18n.T(c, "email.subscription.view"), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"unsubscribe": linkWithText(i18n.T(c, "email.subscription.unsubscribe"), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"change":      linkWithText(i18n.T(c, "email.subscription.change"), baseURL, "/settings"),
+			"logo":        logoURL,
 		}
 
 		bus.Publish(c, &cmd.SendMail{
-			From:         c.User().Name,
+			From:         author.Name,
 			To:           to,
 			TemplateName: "new_comment",
-			Props:        props,
+			Props:        mailProps,
 		})
+
+		webhookProps := dto.Props{"comment": comment}
+		webhook.DescribePost(webhookProps, post, "post", baseURL, true, true)
+		webhook.DescribeUser(webhookProps, author, "author")
+		webhook.DescribeTenant(webhookProps, tenant, "tenant", baseURL, logoURL)
+
+		err = bus.Dispatch(c, &cmd.TriggerWebhooksByType{
+			Type:  enum.WebhookNewComment,
+			Props: webhookProps,
+		})
+		if err != nil {
+			return c.Failure(err)
+		}
 
 		return nil
 	})
@@ -237,10 +272,11 @@ func NotifyAboutStatusChange(post *entity.Post, prevStatus enum.PostStatus) work
 			return c.Failure(err)
 		}
 
-		title := fmt.Sprintf("**%s** changed status of **%s** to **%s**", c.User().Name, post.Title, post.Status.Name())
+		author := c.User()
+		title := fmt.Sprintf("**%s** changed status of **%s** to **%s**", author.Name, post.Title, post.Status.Name())
 		link := fmt.Sprintf("/posts/%d/%s", post.Number, post.Slug)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				err = bus.Dispatch(c, &cmd.AddNewNotification{
 					User:   user,
 					Title:  title,
@@ -259,37 +295,54 @@ func NotifyAboutStatusChange(post *entity.Post, prevStatus enum.PostStatus) work
 			return c.Failure(err)
 		}
 
+		baseURL := web.BaseURL(c)
 		var duplicate string
 		if post.Status == enum.PostDuplicate {
-			duplicate = linkWithText(post.Response.Original.Title, web.BaseURL(c), "/posts/%d/%s", post.Response.Original.Number, post.Response.Original.Slug)
+			duplicate = linkWithText(post.Response.Original.Title, baseURL, "/posts/%d/%s", post.Response.Original.Number, post.Response.Original.Slug)
 		}
 
 		to := make([]dto.Recipient, 0)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				to = append(to, dto.NewRecipient(user.Name, user.Email, dto.Props{}))
 			}
 		}
 
+		tenant := c.Tenant()
+		logoURL := web.LogoURL(c)
+
 		props := dto.Props{
 			"title":       post.Title,
-			"postLink":    linkWithText(fmt.Sprintf("#%d", post.Number), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"siteName":    c.Tenant().Name,
+			"postLink":    linkWithText(fmt.Sprintf("#%d", post.Number), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"siteName":    tenant.Name,
 			"content":     markdown.Full(post.Response.Text),
 			"status":      i18n.T(c, fmt.Sprintf("enum.poststatus.%s", post.Status.Name())),
 			"duplicate":   duplicate,
-			"view":        linkWithText(i18n.T(c, "email.subscription.view"), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"unsubscribe": linkWithText(i18n.T(c, "email.subscription.unsubscribe"), web.BaseURL(c), "/posts/%d/%s", post.Number, post.Slug),
-			"change":      linkWithText(i18n.T(c, "email.subscription.change"), web.BaseURL(c), "/settings"),
-			"logo":        web.LogoURL(c),
+			"view":        linkWithText(i18n.T(c, "email.subscription.view"), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"unsubscribe": linkWithText(i18n.T(c, "email.subscription.unsubscribe"), baseURL, "/posts/%d/%s", post.Number, post.Slug),
+			"change":      linkWithText(i18n.T(c, "email.subscription.change"), baseURL, "/settings"),
+			"logo":        logoURL,
 		}
 
 		bus.Publish(c, &cmd.SendMail{
-			From:         c.User().Name,
+			From:         author.Name,
 			To:           to,
 			TemplateName: "change_status",
 			Props:        props,
 		})
+
+		webhookProps := dto.Props{"post_old_status": prevStatus}
+		webhook.DescribePost(webhookProps, post, "post", baseURL, true, true)
+		webhook.DescribeUser(webhookProps, author, "author")
+		webhook.DescribeTenant(webhookProps, tenant, "tenant", baseURL, logoURL)
+
+		err = bus.Dispatch(c, &cmd.TriggerWebhooksByType{
+			Type:  enum.WebhookChangeStatus,
+			Props: webhookProps,
+		})
+		if err != nil {
+			return c.Failure(err)
+		}
 
 		return nil
 	})
@@ -305,9 +358,10 @@ func NotifyAboutDeletedPost(post *entity.Post) worker.Task {
 			return c.Failure(err)
 		}
 
-		title := fmt.Sprintf("**%s** deleted **%s**", c.User().Name, post.Title)
+		author := c.User()
+		title := fmt.Sprintf("**%s** deleted **%s**", author.Name, post.Title)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				err = bus.Dispatch(c, &cmd.AddNewNotification{
 					User:   user,
 					Title:  title,
@@ -327,17 +381,20 @@ func NotifyAboutDeletedPost(post *entity.Post) worker.Task {
 
 		to := make([]dto.Recipient, 0)
 		for _, user := range users {
-			if user.ID != c.User().ID {
+			if user.ID != author.ID {
 				to = append(to, dto.NewRecipient(user.Name, user.Email, dto.Props{}))
 			}
 		}
 
+		tenant := c.Tenant()
+		baseURL, logoURL := web.BaseURL(c), web.LogoURL(c)
+
 		props := dto.Props{
 			"title":    post.Title,
-			"siteName": c.Tenant().Name,
+			"siteName": tenant.Name,
 			"content":  markdown.Full(post.Response.Text),
-			"change":   linkWithText(i18n.T(c, "email.subscription.change"), web.BaseURL(c), "/settings"),
-			"logo":     web.LogoURL(c),
+			"change":   linkWithText(i18n.T(c, "email.subscription.change"), baseURL, "/settings"),
+			"logo":     logoURL,
 		}
 
 		bus.Publish(c, &cmd.SendMail{
@@ -346,6 +403,19 @@ func NotifyAboutDeletedPost(post *entity.Post) worker.Task {
 			TemplateName: "delete_post",
 			Props:        props,
 		})
+
+		webhookProps := dto.Props{}
+		webhook.DescribePost(webhookProps, post, "post", baseURL, true, true)
+		webhook.DescribeUser(webhookProps, author, "author")
+		webhook.DescribeTenant(webhookProps, tenant, "tenant", baseURL, logoURL)
+
+		err = bus.Dispatch(c, &cmd.TriggerWebhooksByType{
+			Type:  enum.WebhookDeletePost,
+			Props: webhookProps,
+		})
+		if err != nil {
+			return c.Failure(err)
+		}
 
 		return nil
 	})
@@ -366,7 +436,7 @@ func SendInvites(subject, message string, invitations []*actions.UserInvitation)
 			}
 
 			url := fmt.Sprintf("%s/invite/verify?k=%s", web.BaseURL(c), invite.VerificationKey)
-			toMessage := strings.Replace(message, app.InvitePlaceholder, string(url), -1)
+			toMessage := strings.Replace(message, app.InvitePlaceholder, url, -1)
 			to[i] = dto.NewRecipient("", invite.Email, dto.Props{
 				"message": markdown.Full(toMessage),
 			})

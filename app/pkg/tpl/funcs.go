@@ -3,7 +3,9 @@ package tpl
 import (
 	"errors"
 	"html/template"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/getfider/fider/app/pkg/crypto"
 	"github.com/getfider/fider/app/pkg/i18n"
@@ -13,7 +15,7 @@ import (
 
 var strictHtmlPolicy = bluemonday.NewPolicy()
 
-var templateFunctions = template.FuncMap{
+var templateFunctions = map[string]interface{}{
 	"stripHtml": func(input string) string {
 		return strictHtmlPolicy.Sanitize(input)
 	},
@@ -52,5 +54,11 @@ var templateFunctions = template.FuncMap{
 			dict[key] = values[i+1]
 		}
 		return dict
+	},
+	"format": func(format string, date time.Time) string {
+		return date.Format(format)
+	},
+	"quote": func(text string) string {
+		return strconv.Quote(text)
 	},
 }

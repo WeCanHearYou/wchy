@@ -1,0 +1,32 @@
+@import "~@fider/assets/styles/variables.scss";
+
+.c-webhook-properties {
+  border-spacing: 0;
+
+  th {
+    padding: sizing(3);
+  }
+
+  td {
+    border-top: 1px solid get("colors.gray.100");
+    padding: sizing(2);
+  }
+
+  &__prop {
+    font-family: $font-code;
+    font-size: get("font.size.sm");
+  }
+
+  &__val {
+    font-size: get("font.size.sm");
+    @each $color in ("gray", "blue", "green", "red") {
+      &--#{$color} {
+        font-family: $font-code;
+        color: get("colors.#{$color}.600");
+      }
+    }
+    &--italic {
+      font-style: italic;
+    }
+  }
+}

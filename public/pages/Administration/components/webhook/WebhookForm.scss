@@ -1,0 +1,14 @@
+@import "~@fider/assets/styles/variables.scss";
+
+.c-webhook-form {
+  &__content {
+    font-family: $font-code;
+  }
+
+  &__preview {
+    pre {
+      white-space: pre-wrap;
+      font-size: get("font.size.sm");
+    }
+  }
+}

@@ -8,6 +8,7 @@ interface ButtonProps {
   disabled?: boolean
   href?: string
   rel?: "nofollow"
+  target?: "_self" | "_blank" | "_parent" | "_top"
   type?: "button" | "submit"
   variant?: "primary" | "danger" | "secondary" | "tertiary"
   size?: "small" | "default" | "large"
@@ -81,7 +82,7 @@ export class Button extends React.Component<ButtonProps, ButtonState> {
 
     if (this.props.href) {
       return (
-        <a href={this.props.href} rel={this.props.rel} className={className}>
+        <a href={this.props.href} rel={this.props.rel} target={this.props.target} className={className}>
           {this.props.children}
         </a>
       )

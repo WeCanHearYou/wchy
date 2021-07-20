@@ -115,6 +115,14 @@ func (s Service) Init() {
 	bus.AddHandler(listCustomOAuthConfig)
 	bus.AddHandler(getCustomOAuthConfigByProvider)
 	bus.AddHandler(saveCustomOAuthConfig)
+
+	bus.AddHandler(getWebhook)
+	bus.AddHandler(listAllWebhooks)
+	bus.AddHandler(listAllWebhooksByType)
+	bus.AddHandler(listActiveWebhooksByType)
+	bus.AddHandler(createEditWebhook)
+	bus.AddHandler(deleteWebhook)
+	bus.AddHandler(markWebhookAsFailed)
 }
 
 type SqlHandler func(trx *dbx.Trx, tenant *entity.Tenant, user *entity.User) error
