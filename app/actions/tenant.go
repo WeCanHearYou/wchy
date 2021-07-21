@@ -2,6 +2,8 @@ package actions
 
 import (
 	"context"
+	"github.com/getfider/fider/app/models/query"
+	"github.com/getfider/fider/app/pkg/bus"
 
 	"github.com/getfider/fider/app"
 	"github.com/getfider/fider/app/models/dto"
@@ -201,4 +203,30 @@ func (action *UpdateTenantPrivacy) IsAuthorized(ctx context.Context, user *entit
 // Validate if current model is valid
 func (action *UpdateTenantPrivacy) Validate(ctx context.Context, user *entity.User) *validate.Result {
 	return validate.Success()
+}
+
+// UpdateTenantEmailAuthAllowed is the input model used to update tenant privacy settings
+type UpdateTenantEmailAuthAllowed struct {
+	IsEmailAuthAllowed bool `json:"isEmailAuthAllowed"`
+}
+
+// IsAuthorized returns true if current user is authorized to perform this action
+func (action *UpdateTenantEmailAuthAllowed) IsAuthorized(ctx context.Context, user *entity.User) bool {
+	return user != nil && user.Role == enum.RoleAdministrator
+}
+
+// Validate if current model is valid
+func (action *UpdateTenantEmailAuthAllowed) Validate(ctx context.Context, user *entity.User) *validate.Result {
+	result := validate.Success()
+
+	activeProviders := &query.ListActiveOAuthProviders{}
+	if err := bus.Dispatch(ctx, activeProviders); err != nil {
+		return validate.Failed("Cannot retrieve OAuth providers")
+	}
+
+	if len(activeProviders.Result) == 0 {
+		result.AddFieldFailure("isEmailAuthAllowed", "You cannot disable email authentication without any other provider enabled.")
+	}
+
+	return result
 }

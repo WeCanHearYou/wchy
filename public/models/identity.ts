@@ -9,6 +9,7 @@ export interface Tenant {
   status: TenantStatus
   isPrivate: boolean
   logoBlobKey: string
+  isEmailAuthAllowed: boolean
 }
 
 export enum TenantStatus {

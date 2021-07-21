@@ -122,9 +122,11 @@
   "showpost.votespanel.more": "+{extraVotesCount} more",
   "showpost.votespanel.seedetails": "see details",
   "signin.message.email": "Enter your email address to sign in",
+  "signin.message.emaildisabled": "Email authentication has been disabled by an administrator. If you have an administrator account and need to bypass this restriction, please <0>click here</0>.",
   "signin.message.emailsent": "We have just sent a confirmation link to <0>{email}</0>. Click the link and you’ll be signed in.",
   "signin.message.locked.text": "To reactivate this site, sign in with an administrator account and update the required settings.",
   "signin.message.locked.title": "<0>{0}</0> is currently locked.",
+  "signin.message.onlyadmins": "Currently only allowed to sign in to an administrator account",
   "signin.message.private.text": "If you have an account or an invitation, you may use following options to sign in.",
   "signin.message.private.title": "<0>{0}</0> is a private space and requires an invitation to join it.",
   "{count, plural, one {# tag} other {# tags}}": "{count, plural, one {# tag} other {# tags}}"

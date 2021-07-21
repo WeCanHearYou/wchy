@@ -20,13 +20,17 @@ type UpdateTenantPrivacySettings struct {
 	IsPrivate bool
 }
 
+type UpdateTenantEmailAuthAllowedSettings struct {
+	IsEmailAuthAllowed bool
+}
+
 type UpdateTenantSettings struct {
 	Logo           *dto.ImageUpload
 	Title          string
 	Invitation     string
 	WelcomeMessage string
 	CNAME          string
-	Locale          string
+	Locale         string
 }
 
 type UpdateTenantAdvancedSettings struct {

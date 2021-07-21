@@ -106,6 +106,7 @@ func (s Service) Init() {
 	bus.AddHandler(isCNAMEAvailable)
 	bus.AddHandler(updateTenantSettings)
 	bus.AddHandler(updateTenantPrivacySettings)
+	bus.AddHandler(updateTenantEmailAuthAllowedSettings)
 	bus.AddHandler(updateTenantAdvancedSettings)
 
 	bus.AddHandler(getVerificationByKey)
